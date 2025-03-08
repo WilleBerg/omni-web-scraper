@@ -6,54 +6,60 @@ from flask_cors import CORS
 import json
 
 app = Flask(__name__)
-CORS(app)  # This allows cross-origin requests
+CORS(app)
 
 @app.route('/get-data', methods=['GET'])
 def get_data():
-    # This is where you put your Python code that generates JSON    
     return jsonify(scrape_omni_news())
 
 
 
 def scrape_omni_news():
-    # URL of the website to scrape
-    url = "https://omni.se/senaste"  # Assuming this is the website based on the filename
+    url = "https://omni.se/senaste"
     
-    # Add headers to mimic a browser request
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
     }
     
     try:
-        # Send a GET request to the website
         response = requests.get(url, headers=headers)
         
-        # Check if the request was successful
         if response.status_code == 200:
-            # Parse the HTML content
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Find all h2 elements
             h2_elements = soup.find_all('h2')
             
-            # Create a list to store the articles
             articles = []
             
-            # For each h2 element, find the next p element
             for h2 in h2_elements:
+                is_ad = False
+                
+                parent = h2.parent
+                for _ in range(7):
+                    if parent is None:
+                        break
+                    
+                    ad_spans = parent.find_all('span', string=lambda text: text and "ANNONS" in text)
+                    # print(ad_spans,i, h2.text)
+                    if ad_spans:
+                        is_ad = True
+                        break
+                    
+                    parent = parent.parent
+                
+                if is_ad:
+                    continue
                 title = h2.text.strip()
                 
-                # Find the next p element after the h2
                 p_element = h2.find_next('p')
                 
-                # If a p element is found, get its text
+                
                 if p_element:
                     paragraph = p_element.text.strip()
                 else:
                     paragraph = "No paragraph found"
                 
-                # Add the title and paragraph to the articles list
                 articles.append({
                     'title': title,
                     'paragraph': paragraph
